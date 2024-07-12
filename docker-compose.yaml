@@ -3,10 +3,10 @@ version: "3.8"
 services:
   app:
     user: "${USER_ID:-1000}"
-    hostname: "${HOST_NAME:-emkademy}"
-    image: cybulde-template
+    hostname: "${HOST_NAME:-jozaita}"
+    image: ml-end-to-end-model
     platform: linux/amd64
-    container_name: cybulde-template-container
+    container_name: ml-end-to-end-template-container
     build:
       context: .
       dockerfile: ./docker/Dockerfile

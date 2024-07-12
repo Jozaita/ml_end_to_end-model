@@ -13,9 +13,9 @@ else
 endif
 
 SERVICE_NAME = app
-CONTAINER_NAME = cybulde-template-container
+CONTAINER_NAME = ml-end-to-end-model-container
 
-DIRS_TO_VALIDATE = cybulde
+DIRS_TO_VALIDATE = ml-end-to-end
 DOCKER_COMPOSE_RUN = $(DOCKER_COMPOSE_COMMAND) run --rm $(SERVICE_NAME)
 DOCKER_COMPOSE_EXEC = $(DOCKER_COMPOSE_COMMAND) exec $(SERVICE_NAME)
 
@@ -25,9 +25,9 @@ export
 guard-%:
 	@#$(or ${$*}, $(error $* is not set))
 
-## Call entrypoint
-entrypoint: up
-	$(DOCKER_COMPOSE_EXEC) python ./cybulde/entrypoint.py
+## Run taks
+local-run-tasks: up
+	$(DOCKER_COMPOSE_EXEC) python ./cybulde/run_tasks.py
 
 ## Starts jupyter lab
 notebook: up

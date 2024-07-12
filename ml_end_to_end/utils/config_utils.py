@@ -7,7 +7,7 @@ import hydra
 from hydra.types import TaskFunction
 from omegaconf import DictConfig, OmegaConf
 
-from cybulde.config_schemas import config_schema
+from ml_end_to_end.config_schemas import config_schema
 
 
 def get_config(config_path: str, config_name: str) -> TaskFunction:
