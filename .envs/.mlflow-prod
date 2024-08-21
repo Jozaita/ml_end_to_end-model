@@ -3,5 +3,5 @@
 IS_PROD_ENV=true
 
 GOOGLE_CLOUD_PROJECT=ml-end-to-end
-MLFLOW_INTERNAL_TRACKING_URI=http://mlflow-tracking-server-mlflow.c.${GOOGLE_CLOUD_PROJECT}.internal:${PROD_MLFLOW_SERVER_PORT}
+MLFLOW_INTERNAL_TRACKING_URI=http://mlflow-tracking-server-mlflow.europe-west1-b.c.${GOOGLE_CLOUD_PROJECT}.internal:${PROD_MLFLOW_SERVER_PORT}
 MLFLOW_TRACKING_URI=http://localhost:${PROD_MLFLOW_SERVER_PORT}

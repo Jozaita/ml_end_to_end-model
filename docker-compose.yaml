@@ -18,6 +18,7 @@ x-app-template: &APP_TEMPLATE
     - .envs/.mlflow-common
     - .envs/.mlflow-dev
     - .envs/.postgres
+
   volumes:
     - ./:/app/
     - mlflow-artifact-store:/mlflow-artifact-store
@@ -29,19 +30,19 @@ x-app-template: &APP_TEMPLATE
 
 services:
   mlflow-db:
-    container_name: mlflow-backend-store
-    image: postgres:14
-    env_file:
-      - .envs/.mlflow-common
-      - .envs/.mlflow-dev
-      - .envs/.postgres
-    volumes:
-      - postgresql-mlflow-data:/var/lib/postgresql/data
-    ports:
-      - 5433:5432
-    profiles:
-      - dev
-
+      container_name: mlflow-backend-store
+      image: postgres:14
+      env_file:
+        - .envs/.mlflow-common
+        - .envs/.mlflow-dev
+        - .envs/.postgres
+        - .envs/.infrastructure
+      volumes:
+        - postgresql-mlflow-data:/var/lib/postgresql/data
+      ports:
+        - 5433:5432
+      profiles:
+        - dev
   app-dev:
     <<: *APP_TEMPLATE  
     container_name: ml-end-to-end-dev-container
@@ -53,14 +54,15 @@ services:
   
   app-prod:
     <<: *APP_TEMPLATE
-    container_name: ml-end-to-end-prod-container
-    env_file: 
-     - .envs/.mlflow-prod
-     - .envs/.mlflow-common
+    container_name: ml-end-to-end-model-prod-container
+    env_file:
+      - .envs/.mlflow-common
+      - .envs/.mlflow-prod
+      - .envs/.infrastructure
     ports:
-     - ${PROD_MLFLOW_SERVER_PORT}:${PROD_MLFLOW_SERVER_PORT}
+      - ${PROD_MLFLOW_SERVER_PORT}:${PROD_MLFLOW_SERVER_PORT}
     profiles:
-     - prod
+      - prod
   
   app-ci:
    <<: *APP_TEMPLATE
@@ -70,8 +72,6 @@ services:
    profiles:
     - ci 
 
-  app-staging:
-    <<: *APP_TEMPLATE
 
 
 

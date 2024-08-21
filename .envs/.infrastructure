@@ -1,0 +1,7 @@
+GCP_PROJECT_ID=ageless-fire-423616-e1
+GCP_ARTIFACT_REGISTRY_REPOSITORY_NAME=ml-end-to-end
+VM_NAME=mlflow-tracking-server-mlflow
+MLFLOW_PROJECT_ID=mlflow-tracking-server-425613
+ZONE=europe-west1-b
+DOCKER_IMAGE_NAME=ml-end-to-end-model
+GCP_DOCKER_REGISTRY_URL=europe-west1-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REGISTRY_REPOSITORY_NAME}/${DOCKER_IMAGE_NAME}

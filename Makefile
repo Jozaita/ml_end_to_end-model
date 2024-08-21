@@ -4,6 +4,7 @@
 include .envs/.postgres
 include .envs/.mlflow-common 
 include .envs/.mlflow-dev
+include .envs/.infrastructure
 export 
 
 SHELL = /usr/bin/env bash
@@ -18,17 +19,14 @@ else
 endif
 
 PROD_SERVICE_NAME = app-prod
-CONTAINER_NAME = ml-end-to-end-model-prod-container
+PROD_CONTAINER_NAME = ml-end-to-end-model-prod-container
+PROD_PROFILE_NAME = prod
 
-ifeq (,$(shell which nvidia-smi))
-	PROFILE = ci 
-	CONTAINER_NAME = ml-end-to-end-model-ci-container
-	SERVICE_NAME = app-ci
-else
-	PROFILE = dev
-	CONTAINER_NAME = ml-end-to-end-model-dev-container
-	SERVICE_NAME = app-dev
-endif
+
+PROFILE = dev
+CONTAINER_NAME = ml-end-to-end-model-dev-container
+SERVICE_NAME = app-dev
+
 
 DIRS_TO_VALIDATE = ml-end-to-end
 DOCKER_COMPOSE_RUN = $(DOCKER_COMPOSE_COMMAND) run --rm $(SERVICE_NAME)
@@ -37,15 +35,35 @@ DOCKER_COMPOSE_EXEC = $(DOCKER_COMPOSE_COMMAND) exec $(SERVICE_NAME)
 DOCKER_COMPOSE_RUN_PROD = $(DOCKER_COMPOSE_COMMAND) run --rm $(PROD_SERVICE_NAME)
 DOCKER_COMPOSE_EXEC_PROD = $(DOCKER_COMPOSE_COMMAND) exec $(PROD_SERVICE_NAME)
 
+IMAGE_TAG := $(shell echo "train--$$(uuidgen)")
+
+
 export
 
 # Returns true if the stem is a non-empty environment variable, or else raises an error.
 guard-%:
 	@#$(or ${$*}, $(error $* is not set))
 
-## Run taks
-local-run-tasks: up
-	$(DOCKER_COMPOSE_EXEC) python ./cybulde/run_tasks.py
+# Generate final config for overrides use OVERRIDES
+generate-final-config:up-prod
+	@$(DOCKER_COMPOSE_EXEC_PROD) python ml_end_to_end/generate_final_config.py infrastructure.instance_group_creator.instance_template_creator.vm_metadata_config.docker_image=${GCP_DOCKER_REGISTRY_URL}:${IMAGE_TAG} ${OVERRIDES}
+
+# Generate final config for overrides use OVERRIDES: LOCALLY
+generate-final-config-local: up 
+	@$(DOCKER_COMPOSE_EXEC) python ml_end_to_end/generate_final_config.py ${OVERRIDES}
+
+## Run tasks
+run-tasks: generate-final-config push
+	$(DOCKER_COMPOSE_EXEC_PROD) python ml_end_to_end/launch_job_on_gcp.py
+
+## Local Run taks
+local-run-tasks: generate-final-config-local
+	$(DOCKER_COMPOSE_EXEC) torchrun ml_end_to_end/run_tasks.py
+
+#Deplot etcd server on GCE
+deploy-etcd-server:
+	chmod +x ./scripts/deploy-etcd-server.sh
+	./scripts/deploy-etcd-server.sh
 
 ## Starts jupyter lab
 notebook: up
@@ -100,11 +118,21 @@ lock-dependencies: build-for-dependencies
 	$(DOCKER_COMPOSE_RUN) bash -c "if [ -e /home/$(USER_NAME)/poetry.lock.build ]; then cp /home/$(USER_NAME)/poetry.lock.build ./poetry.lock; else poetry lock; fi"
 
 ## Starts docker containers using "docker-compose up -d"
-up:
+up: 
 ifeq (,$(shell docker ps -a|grep $(CONTAINER_NAME)))
 	@make down
 endif
 	@$(DOCKER_COMPOSE_COMMAND) --profile $(PROFILE) up -d --remove-orphans
+
+## Starts prod docker containers using "docker-compose up -d"
+up-prod: 
+
+ifeq (,$(shell docker ps -a|grep $(PROD_CONTAINER_NAME)))
+	@echo "Container $(PROD_CONTAINER_NAME) not found. Running make down."
+	@make down
+endif
+	@echo "Bringing up containers with profile $(PROD_PROFILE_NAME)"
+	@$(DOCKER_COMPOSE_COMMAND) --profile $(PROD_PROFILE_NAME) up -d --remove-orphans
 
 
 ## docker-compose down
@@ -114,6 +142,14 @@ down:
 ## Open an interactive shell in docker container
 exec-in: up
 	docker exec -it $(CONTAINER_NAME) bash
+
+mlflow-ssh-tunnel:
+	gcloud compute ssh "$${VM_NAME}" --zone "$${ZONE}" --project "$${MLFLOW_PROJECT_ID}" --tunnel-through-iap -- -N -L "$${PROD_MLFLOW_SERVER_PORT}:localhost:$${PROD_MLFLOW_SERVER_PORT}"
+
+push: guard-IMAGE_TAG build 
+	@gcloud auth configure-docker --quiet europe-west1-docker.pkg.dev
+	@docker tag "$${DOCKER_IMAGE_NAME}:latest" "$${GCP_DOCKER_REGISTRY_URL}:$${IMAGE_TAG}"
+	@docker push "$${GCP_DOCKER_REGISTRY_URL}:$${IMAGE_TAG}"
 
 .DEFAULT_GOAL := help
 
